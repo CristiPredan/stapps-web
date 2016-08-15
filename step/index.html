@@ -1,0 +1,824 @@
+<!DOCTYPE html> 
+<html data-ng-app="ToDo" style="min-height: 620px;">
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<meta name="google-site-verification" content="p4fB4ybygrcVnan3DsZ_eOhyVQD2PcNMm4lyaYlNJGc" />
+<!-- 	<link href='https://fonts.googleapis.com/css?family=Handlee' rel='stylesheet' type='text/css'> -->
+	<link href='https://fonts.googleapis.com/css?family=Roboto+Condensed:400,300,700&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+	<link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css">
+	<link rel="stylesheet" href="css/font-awesome.css">
+	<link rel="stylesheet" href="css/main.css">
+	<link rel="stylesheet" href="css/list.css">
+	<style>
+		#right-panel {
+			height: 100%;
+			width: 100%;
+			overflow: auto;  
+			float: left;    
+			font-family: 'Roboto','sans-serif';
+			line-height: 30px;
+			padding: 0;                                
+			font-size: 13px;
+		  }
+		  
+		  #right-panel > div {
+			padding: 10px;                   
+		  }
+
+		  #right-panel select, #right-panel input {
+			font-size: 13px;
+		  }
+
+		  #right-panel select {
+			width: 100%;
+		  }
+
+		  #right-panel i { 
+			font-size: 12px;
+		  }
+		  
+		.warnbox-content, 
+		.adp-warnbox,
+		.adp-summary,
+		.adp-legal {                           
+			display: none;
+		  } 
+	</style> 
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+	<script src="https://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script> 
+<!-- <script src="https://maps.googleapis.com/maps/api/js?v=3&amp;key=AIzaSyAWYIg0IsKQRMGnhkFDRdhasLrIMpJHpwA"></script> -->
+	<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBpiqAwZllkHOfqidjkW-q_XPnogVAAfWA&libraries=places"></script>                           
+	<script src="js/interact.js"></script>
+	<script src="js/angular.js"></script>             
+	<script src="js/list.js"></script>   
+	<script src="js/underscore-min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.simpleWeather/3.1.0/jquery.simpleWeather.min.js"></script>    
+	<script>
+	$(document).ready(function(){ 
+	interact('.resize-drag')
+	  .resizable({
+		preserveAspectRatio: true,
+		edges: { left: true, right: true, bottom: true, top: true }
+	  })
+	  .on('resizemove', function (event) {
+		var target = event.target, 
+			x = (parseFloat(target.getAttribute('data-x')) || 0),
+			y = (parseFloat(target.getAttribute('data-y')) || 0); 
+
+		// update the element's style
+		target.style.width  = event.rect.width + 'px';  
+		target.style.height = event.rect.height + 'px';
+
+		// translate when resizing from top or left edges
+		x += event.deltaRect.left;
+		y += event.deltaRect.top;
+
+		target.style.webkitTransform = target.style.transform =
+			'translate(' + x + 'px,' + y + 'px)';
+
+		target.setAttribute('data-x', x);
+		target.setAttribute('data-y', y);
+	  });
+	 if ($(window).width() > 459) { 
+	  interact('.resize-drag2')  
+	  .resizable({        
+		preserveAspectRatio: true,
+		edges: { left: true, right: true, bottom: true, top: true }
+	  })
+	  .on('resizemove', function (event) {
+		var target = event.target,
+			y = (parseFloat(target.getAttribute('data-y')) || 0);
+		target.style.height = event.rect.height + 'px';
+		y += event.deltaRect.top;
+
+		target.setAttribute('data-y', y);
+	  });
+	  }
+	  else { 
+		$('.resize-drag2').css('max-height','460px');  
+	  }
+	});
+	function isOnline() {
+		var online = navigator.onLine;
+		if(online) {
+		  // state for the online status
+		} else {
+		   alert('Offline'); // state for the offline status
+		}
+	}
+	</script> 
+</head> 
+<body onload="initMap()">                                
+	<div data-role="page" id="pageone" data-ng-controller="ToDoController">  
+	  <div class="inner-content" id="controls"> 
+		<div data-role="panel" id="myPanel" data-display="overlay">  
+			<div class="app-title">
+				<h5>Favourite destination</h5>                                    
+				<a href="#pageone" data-rel="close" class="action-link action-link-close panel-link fa fa-arrow-left"></a>
+			<br style="clear: both">   
+			</div> 
+			<div class="panel-text">  
+				<form class="form-horizontal" name="frm" data-ng-submit="addTodo()">    
+					<div class="input-container clearfix"> 
+						<div class="task-insert-wrapper" style="display: inline-block;width: 84%;">
+							<input type="text" class="form-control task-insert" id="myaddress" style="width:100%; border:1px solid #222836" data-ng-model="newTodo" required placeholder="Insert a favourite address..." />  
+						</div> 
+						<button class="btn btn-primary add" style="	width: 36px !important; height:34px !important; display: inline-block; top: -1px;border: 0px;" data-ng-click="frm.$invalid" disabled="disabled"><i class="fa fa-plus"></i></button>
+					</div>	 
+				</form><!-- /.form-horizontal -->
+				<div class="favourite-list-container" id="scroll-container" style="overflow-y: auto !important">            
+					<ul class="unstyled" id="sortable">               
+						<li data-ng-repeat="todo in todos | limitTo: 10">  
+							<article data-ng-cloak class="done-{{todo.done}}" style="transition:0.3s">
+								<div ng-click="deleteTask(todos.indexOf(todo))" title="Delete Task" style="display:inline-block !important; font-size: 18px; width: 18px; height: 22px; color: #5778BF; vertical-align: middle; text-align: right; float:right; margin-right: 5px;" class="fa fa-trash-o delete-task"></div> 
+								<a id="tras" data-rel="close" href="#pageone">{{todo.title}}</a>     
+							</article><!-- /.done -->							
+						</li>                        						
+					</ul><!-- end list -->
+				</div><!-- /.favourite-list-container -->	
+			</div><!-- /.panel-text -->
+			<div class="pannel-footer" style="position: absolute; bottom: 0;width: 100%; height: 40px;">         
+				<div class="panel-image"></div>
+				<div class="panel-footer-weather">	
+					<div id="weather2"></div>
+				</div>	
+			</div>  
+		  </div>  
+<!-- HEADER -->		  
+		  <div data-role="header" data-position="fixed">  
+		  <div class="header-top">                
+		   <div class="header-action-left">
+			 <a href="#myPanel" class="action-link panel-link fa fa-bars"></a>                  
+		   </div>  
+		   <div class="header-action-right">
+				<a href="#pagethree" data-transition="slideup" class="action-link link2 fa fa-info"></a> 		   
+				<a href="#pagetwo" data-transition="slide" class="action-link link2 fa fa-map-signs"></a>                      		   
+				<a href="#" id="refresh" class="action-link link2 fa fa-refresh" onClick="window.location.reload()"></a>
+<!-- 			<a href="#" id="loc-inchis" class="action-link link2 fa fa-stack">
+					<span class="fa fa-map fa-stack-1x" style="font-size: 21px;"></span>
+					<span class="fa fa-ban fa-stack-1x" style="font-size: 17px;color: #5778BF;"></span> 
+				</a>
+				<a href="#" id="loc-deschis" class="action-link link2 fa fa-stack">
+					<span class="fa fa-map fa-stack-1x" style="font-size: 21px;"></span>
+					<span class="fa fa-map-marker fa-stack-1x" style="font-size: 17px;color: #5778BF"></span>               
+				</a> -->
+				<a href="#" id="action-btn1" class="action-link link1"></a>                                                                  
+		   </div>
+		   <br style="clear: both;">
+		   </div> 
+			<div class="header-action-select">
+				<input type="text" name="from" id="myvalue" style="display: none"/>  
+				<div class="address-search-wrapper">
+					<input type="text" name="to" id="myselect" placeholder="Insert the destination" value=""/> 
+					<span class="address-clear font-icon fa fa-times"></span> 
+				</div> 	
+			</div>   
+		  </div> 
+<!-- MAIN -->		  
+		 <div data-role="main" class="ui-content">    
+				<div id="googleMap"></div>
+				<button id="button" class="btn-street">&times;</button>
+			<div class="resize-container">
+				<div id="map2" class="resize-drag"></div>
+			</div>
+			<div class="tap-message">
+				<span class="tap-message-text">Tap on the map or on the markers to see location and elevation infos!</span>
+			</div>
+			<div class="tap-message2">
+				<span class="tap-message-text">Route is too long and may take more than 40 min. to walk to the destination!</span>       
+			</div>
+			<div class="tap-message3">
+				<span class="tap-message-text">Make sure your internet connection and the location service are active!</span>       
+			</div>
+		 </div> 
+<!-- FOOTER -->
+		  <div data-role="footer" data-position="fixed" class="action-footer"> 
+			<div class="text-line">
+				<span class="action-link link1"></span><p class="action-text1"></p>
+			</div> 
+			<div class="text-line elevation-message">              
+				<span class="font-icon fa fa-line-chart"></span><p class="action-text2" style="display: inline-block"></p>
+			</div>
+			<div class="main-footer-weather">	
+				<div id="weather"></div>
+			</div>
+		  </div><!-- /.action-footer -->
+		</div><!-- /.inner-controls -->	
+	</div>
+	<div data-role="page" id="pagetwo" class="pagetwo" style="overflow-x:hidden;">
+	  <div class="inner-content" id="controls">
+<!-- HEADER 2-->
+		  <div data-role="header" data-position="fixed">
+			  <div class="header-top" style="padding: 5px 0 0 0">
+					<div class="header-action-left">
+						<a href="#pageone" data-transition="slide" class="action-link panel-link fa fa-arrow-left"></a>
+					</div> 
+					<div class="app-brand-wrapper">
+						<h5 style="color:#fff; display:inline-block; vertical-align: middle;font-size: 18px; line-height: 55px;font-weight: 300;text-shadow: none">Directions to destination</h5>                             
+					</div><!-- /.app-brand-wrappwer -->                             
+					<br style="clear: both;">
+			   </div><!-- /.header-top -->
+		  </div>
+<!-- MAIN 2 -->
+		  <div data-role="main" class="ui-content">
+			<div style="padding-top: 5px;">
+				<div class="popup-inner">
+					<div id="map3" style="display: none"></div>
+					<div id="right-panel"></div>
+				</div>
+			</div>
+		  </div><!-- /.ui-content -->
+<!-- FOOTER 2 -->
+		  <div data-role="footer" data-position="fixed" class="action-footer" style="opacity: 1">
+			<div class="text-line">
+				<span class="action-link link1"></span><p class="action-text1"></p>
+			</div> 
+			<div class="text-line elevation-message">              
+				<span class="font-icon fa fa-line-chart"></span><p class="action-text2" style="display: inline-block"></p>
+			</div>
+			<div class="main-footer-weather"> 	 
+				<div id="weather"></div>
+			</div>
+		  </div>
+		</div><!-- /.inner-controls -->
+	</div>
+	<div data-role="page" id="pagethree" class="pagetwo" style="overflow-x:hidden;">
+	  <div class="inner-content" id="controls"> 
+<!-- HEADER 2-->	  
+		  <div data-role="header" data-position="fixed">  
+			  <div class="header-top" style="padding: 5px 0 0 0">                
+					<div class="header-action-left">
+						<a href="#pageone" data-transition="slide" class="action-link panel-link fa fa-arrow-up"></a>
+					</div> 
+					<div class="app-brand-wrapper">
+						<h1 class="info-title" style="color:#fff; display:inline-block; vertical-align: middle; margin-right: 10px;">Stapp Out!<span style="font-size: 12px;line-height: 40px; display: inline-block; margin-left: 10px;">3.0.0</span></h1>
+						<span class="logo-brand"></span>
+					</div><!-- /.app-brand-wrappwer -->  
+					<br style="clear: both;">				   
+			   </div><!-- /.header-top --> 
+		  </div>
+<!-- MAIN 2 -->		  
+		  <div data-role="main" class="ui-content">               
+			<div style="padding-top: 5px;">  
+				<div class="popup-inner">          
+					<ul>
+						<li>
+							<span class="icon-bullet fa fa-map-marker" style="color:#E11A05"></span>
+							<span class="info-item-text">Stapp Out! helps you find a walking route inside a city. It gets your actual location and indicates your position while walking.</span> 
+						</li>
+						<li>
+							<span class="icon-bullet fa fa-map-o" style="color:#5778BF"></span>
+							<span class="info-item-text">Insert the address of the destination and tap on the walking icon from the top-right. The app displays the shortest walking route, the distance and the estimated travel time. If your current location is not accurate enough, drag the marker on the map and get a new route.</span>
+						</li> 
+						<li>
+							<span class="icon-bullet fa fa-thumb-tack" style="color:#EF7045"></span>
+							<span class="info-item-text">Multiple markers can be displayed simultaneously. If taping on markers, you'll get location infos. Taping on the map will generate infos about the elevation. The app also offers specific directions towards destination.</span>
+						</li>
+						<li>
+							<span class="icon-bullet fa fa-edit" style="color:#49B27D"></span>
+							<span class="info-item-text">Insert up to 10 favourite addresses by tapping the list button from top-left. Insert the address, then click on the add button and the address will be inserted and saved. Tapping on the text will automatically set the address as desired destination.</span> 
+						</li>  
+					</ul> 
+				</div>
+			</div>
+		  </div><!-- /.ui-content -->
+<!-- FOOTER 2 -->	 	  
+		  <div data-role="footer" data-position="fixed" class="action-footer" style="opacity: 1"> 
+			<div class="text-line" style="color: #fff; text-shadow: none;display: block;">
+				<p class="copyright">Stapp Out! &copy; 2016</p>
+			</div>
+		  </div>
+		</div><!-- /.inner-controls -->	
+	</div>
+	<script>
+	$(document).ready(function(){ 
+
+		window.navigator = window.navigator || {};
+        if(!!navigator.geolocation) {
+
+          var map;
+
+          var mapOptions = {
+            zoom: 15, 
+            scaleControl: true,
+			streetViewControl: true,
+			streetViewControlOptions: {
+				position: google.maps.ControlPosition.TOP_RIGHT
+			},
+            panControl: false,
+            mapTypeControl: false,
+            zoomControl: true,
+            mapTypeId: google.maps.MapTypeId.ROADMAP,
+            mapTypeControl: true,
+			enableCloseButton: false
+          };
+
+			var map = new google.maps.Map(document.getElementById('googleMap'), mapOptions);
+
+			window.addEventListener('DOMContentLoaded', function( e ){
+
+// Get close button and insert it into streetView
+				var closeButton = document.querySelector('#button'),
+					controlPosition = google.maps.ControlPosition.RIGHT_TOP;
+
+				var streetView = map.getStreetView();
+
+				streetView.setOptions({ enableCloseButton: false });
+
+				streetView.controls[ controlPosition ].push( closeButton );
+
+				google.maps.event.addDomListener(closeButton, 'click', function(){
+					streetView.setVisible(false);
+				});
+
+			});
+
+			var marker7;
+			icon7 = "http://cristianapps.esy.es/step/images/marker-elev.png";
+
+			function placeMarker(location) {
+			  if ( marker7 ) {
+				marker7.setPosition(location);
+			  } else {
+				marker7 = new google.maps.Marker({
+				  position: location,
+				  map: map,
+				  icon: icon7
+				});
+			  }
+			}
+
+			var input = document.getElementById('myselect');
+			var options = {
+
+			};
+
+			autocomplete = new google.maps.places.Autocomplete(input, options);
+
+			google.maps.event.addListener(map, 'click', function(event) {
+			  placeMarker(event.latLng);
+			});
+
+ // add a listener for the click event. Display the elevation for the LatLng of
+			map.addListener('click', function(event) {
+				displayLocationElevation(event.latLng, elevator, marker7);
+			});
+
+// geolocation current position
+			navigator.geolocation.getCurrentPosition(function(position) {
+
+            var myCenter= parseFloat(myCenter);
+            var myCenter= new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+            document.getElementById('myvalue').value = myCenter;
+
+			function initialize() {
+				var input = document.getElementById('myselect');
+				var autocomplete = new google.maps.places.Autocomplete(input);
+
+			}
+			//google.maps.event.addDomListener(window, 'load', initialize);
+
+			$.simpleWeather({
+			location: myCenter,
+			woeid: '',
+			unit: 'f',
+			success: function(weather) {
+			  html = '<ul><li>'+weather.city+'</li><span class="separator"></span><h2><i class="icon-'+weather.code+'"></i> '+weather.alt.temp+'&deg;'+weather.alt.unit+'</h2>';
+			  html += '<li class="currently">'+weather.currently+'</li>';
+			  $("#weather").html(html);
+			},
+			error: function(error) {
+			  $("#weather").html('<p>'+error+'</p>');
+			}
+		  });
+
+			$.simpleWeather({
+			location: myCenter,
+			woeid: '',
+			unit: 'f',
+			success: function(weather) {
+			  html = '<ul><li>'+weather.city+'</li><span class="separator"></span><h2><i class="icon-'+weather.code+'"></i> '+weather.alt.temp+'&deg;'+weather.alt.unit+'</h2>';
+			  html += '<li class="currently">'+weather.currently+'</li>';
+			  $("#weather2").html(html);
+			},
+			error: function(error) {
+			  $("#weather2").html('<p>'+error+'</p>');
+			}
+		  });
+
+// map marker
+			icon = "images/start-marker.png";
+
+            var marker = new google.maps.Marker({
+              position: myCenter,
+			  draggable: true,
+			  animation: google.maps.Animation.DROP,
+              title:'Click to zoom',
+			  icon: icon
+            });
+			marker.setMap(map);
+
+// marker dragging function
+			 google.maps.event.addListener(marker, 'drag', function(event) {
+				$('#myvalue').val(+event.latLng.lat()+' , '+event.latLng.lng());
+			  });
+
+			  var GLOBAL = {};
+
+			  google.maps.event.addListener(marker, 'click', function(event) {
+				$('#myvalue').val(+event.latLng.lat()+' , '+event.latLng.lng());
+			  });
+
+			  google.maps.event.addListener(marker, "dragend", function(event) {
+
+			  var point = marker.getPosition();
+			  marker.panTo(point);
+
+			});
+
+			var icon2 = 'images/end-marker.png';
+
+// map marker destination
+			var marker6 = new google.maps.Marker({
+				position: new google.maps.LatLng(),
+				icon: icon2,
+				map: map,
+				animation: google.maps.Animation.DROP,
+				title: $('input[name=to]').val()
+             });
+			marker6.setMap(map);
+
+			var circle = new google.maps.Circle({
+				position: marker6,
+				map: map,
+				radius: 100,
+				fillColor: '#EA3A82',
+				strokeOpacity:0.8,
+				strokeWeight:0,
+			});
+
+			circle.bindTo('center', marker6, 'position');
+			var bounds = circle.getBounds();
+
+// zoom to 17 when clicking on marker
+            google.maps.event.addListener(marker,'click',function() {
+				map.setZoom(17);
+				map.setCenter(marker.getPosition());
+			});
+			map.setCenter(myCenter);
+		});
+
+
+// walking route function
+		function walkingRoute(from, to) {
+
+		var request = {
+			origin: from,
+			destination: to,
+			travelMode: google.maps.DirectionsTravelMode.WALKING,
+			unitSystem: google.maps.UnitSystem.METRIC
+		};
+
+		$('#controls .action-text1').removeClass('error');
+		$('#controls .action-text1').text('loading');
+
+		if(typeof(walkingLine) !== 'undefined') walkingLine.setMap(null);
+		directionsService.route(request, function(response, status){
+
+		if(status == google.maps.DirectionsStatus.OK){
+
+		var totalKM = (response.routes[0].legs[0].distance.value / 1000);
+		var kilometers = Math.round(totalKM * 10) / 10;
+		var routetime = (Math.round(totalKM * 10) / 10)*14;
+		var routetime = parseInt(routetime);
+		var distanceText = + kilometers + ' km in approx: ' + routetime + ' minutes';
+
+		if(kilometers > 3) {
+			$('.tap-message2').css('display','block').delay(5000).fadeOut(1000);
+			$(".tap-message2").delay(5000).fadeOut(1000);
+			//alert('Distanta este prea mare');
+			navigator.vibrate = navigator.vibrate || navigator.webkitVibrate || navigator.mozVibrate || navigator.msVibrate;
+			navigator.vibrate(700);
+		}
+
+        $('#controls .action-text1').text(distanceText);
+
+// walking line
+        walkingLine = new google.maps.Polyline({
+          path: response.routes[0].overview_path,
+			strokeColor: "#d63a40",
+			strokeOpacity: .8,
+			strokeWeight: 5,
+			fillColor: "#fff",
+			fillOpacity: 1,
+        });
+        walkingLine.setMap(map);
+        map.fitBounds(response.routes[0].bounds);
+
+		icon2 = "images/end-marker.png";
+
+		var marker6 = new google.maps.Marker({
+		   position: response.routes[0].overview_path[ response.routes[0].overview_path.length - 1 ],
+		   map: map,
+		   icon: icon2,
+		   title: "End"
+		});
+
+// circle around destination marker
+		var circle = new google.maps.Circle({
+			position: marker6,
+			map: map,
+			radius: 200,
+			fillColor: '#f68989',
+			strokeOpacity:0.8,
+			strokeWeight:0,
+		});
+
+		circle.bindTo('center', marker6, 'position');
+
+		var bounds = circle.getBounds();
+
+		var infowindow6 = new google.maps.InfoWindow({
+            content: $('input[name=to]').val()
+            });
+
+          google.maps.event.addListener(marker6, 'click', function() {
+            infowindow6.open(map,marker6);
+            });
+		}
+
+      else {
+		$('#controls .action-text1').addClass('error');
+		$('#controls .action-text1').text('insert a destination and find a route!');
+		}
+    });
+
+		icon = "images/start-marker.png";
+
+		var marker = new google.maps.Marker(
+		{
+		position: request,
+		icon: icon,
+		map: map,
+		animation: google.maps.Animation.DROP,
+		title: 'Destination'
+		});
+	}
+
+		$('#action-btn1').click(function(){
+
+			var replit = $('#myvalue').val().replace(/[{()}]/g, '');
+			$('#myvalue').val(replit);
+
+			//$('.panel-footer-weather').html("<div id='weather'></div>");
+
+			$('.action-footer .action-link.link1').css('display','inline-block');
+			$('#weather').css('display','none');
+			$('#weather2').css('display','block');
+			walkingRoute(
+				$('input[name=from]').val(),
+				$('input[name=to]').val()
+			);
+		});
+
+		var map;
+		var walkingLine;
+		var directionsService = new google.maps.DirectionsService();
+		$('input[name=from]').val();
+		$('input[name=to]').val();
+		$('input[name=from]').trigger('click');
+
+      } else {
+        document.getElementById('googleMap').innerHTML = 'No Geolocation Support.';
+      }
+
+// elevation display function
+		var elevator = new google.maps.ElevationService;
+		var marker = new google.maps.Marker({map: map});
+
+    });
+
+	function initMap() {
+        var directionsDisplay = new google.maps.DirectionsRenderer;
+        var directionsService = new google.maps.DirectionsService;
+        var map = new google.maps.Map(document.getElementById('map3'), {
+         zoom: 7,
+         center: {lat: 41.85, lng: -87.65}
+        });
+        directionsDisplay.setMap(map);
+        directionsDisplay.setPanel(document.getElementById('right-panel'));
+
+        // var control = document.getElementById('floating-panel');
+        // control.style.display = 'none';
+        //map.controls[google.maps.ControlPosition.TOP_CENTER].push(control);
+
+        var onChangeHandler = function() {
+          calculateAndDisplayRoute(directionsService, directionsDisplay);
+        };
+        //document.getElementById('myselect').addEventListener('change', onChangeHandler);
+        document.getElementById('action-btn1').addEventListener('click', onChangeHandler);
+      }
+
+      function calculateAndDisplayRoute(directionsService, directionsDisplay) {
+	  	var replit = $('#myvalue').val().replace(/[{()}]/g, '');
+			$('#myvalue').val(replit);
+        var start = document.getElementById('myvalue').value;
+        var end = document.getElementById('myselect').value;
+        directionsService.route({
+          origin: start,
+          destination: end,
+          travelMode: google.maps.TravelMode.WALKING
+        }, function(response, status) {
+          if (status === google.maps.DirectionsStatus.OK) {
+            directionsDisplay.setDirections(response);
+          } else {
+            window.alert('Directions request failed due to ' + status);
+          }
+        });
+      }
+
+// Elevation parameters
+		function displayLocationElevation(location, elevator, marker7) {
+
+		  var elevation = parseInt(elevation);
+
+		  elevator.getElevationForLocations({
+			'locations': [location]
+		  }, function(results, status) {
+
+			marker7.setPosition(location);
+			if (status === google.maps.ElevationStatus.OK) {
+// Retrieve the first result
+			  if (results[0]) {
+// Open the infowindow indicating the elevation at the clicked position.
+				//infowindow.setContent('<span class="font-icon fa fa-line-chart" style="font-size: 12px; color: #000"></span>: ' + parseInt(results[0].elevation) + ' m.');
+				$('#weather').css('display','none');
+				$('#weather2').css('display','block');
+				$('.elevation-message').css('display','inline-block');
+				$('.action-text2').html('Elevation: ' + parseInt(results[0].elevation) + ' m.')
+			  } else {
+				infowindow.setContent('No results found');
+			  }
+			} else {
+			  infowindow.setContent('Elevation service failed due to: ' + status);
+			}
+		  });
+
+		}
+	</script>
+	<script>
+// geolocation & current position marker
+		var map,
+		currentPositionMarker,
+		mapCenter = new google.maps.LatLng(52.12674386, -59.03503418),
+		map;
+
+        function initializeMap()
+        {
+        map = new google.maps.Map(document.getElementById('map2'), {
+        zoom: 15,
+        center: mapCenter,
+				scaleControl: false,
+				panControl: false,
+				mapTypeControl: false,
+				zoomControl: false,
+				mapTypeControl: false,
+				mapTypeId: google.maps.MapTypeId.ROADMAP
+             });
+        }
+
+        function locError(error) {
+// message if the current position could not be located
+            alert("The current position could not be found!");
+        }
+
+ // current position of the user
+        function setCurrentPosition(pos) {
+			icon3 = 'images/local-marker.png';
+            currentPositionMarker = new google.maps.Marker({
+                map: map,
+				icon: icon3,
+                position: new google.maps.LatLng(
+                    pos.coords.latitude,
+                    pos.coords.longitude
+                ),
+                title: "Current Position",
+            });
+            map.panTo(new google.maps.LatLng(
+                    pos.coords.latitude,
+                    pos.coords.longitude
+                ));
+
+			  google.maps.event.addListener(map,'center_changed',function() {
+				window.setTimeout(function() {
+				  map.panTo(currentPositionMarker.getPosition());
+				},3000);
+			  });
+        }
+
+        function displayAndWatch(position) {
+
+// set current position
+            setCurrentPosition(position);
+
+// watch position
+            watchCurrentPosition();
+        }
+
+        function watchCurrentPosition() {
+            var positionTimer = navigator.geolocation.watchPosition(
+                function (position) {
+                    setMarkerPosition(
+                        currentPositionMarker,
+                        position
+                    );
+                });
+        }
+
+        function setMarkerPosition(marker, position) {
+            marker.setPosition(
+                new google.maps.LatLng(
+                    position.coords.latitude,
+                    position.coords.longitude)
+            );
+        }
+
+        function initLocationProcedure() {
+            initializeMap();
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(displayAndWatch, locError);
+            } else {
+ // tell the user if a browser doesn't support this amazing API
+                alert("Your browser does not support the Geolocation API!");
+            }
+        }
+
+// initialize with a little help of jQuery 
+        $(document).ready(function() {
+            initLocationProcedure();
+        });
+	</script>
+
+<!--<script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAWYIg0IsKQRMGnhkFDRdhasLrIMpJHpwA&callback=initMap">
+</script>-->
+	<script>
+// current location open/close functionality
+		$(document).ready(function(){
+			$('#loc-deschis').click(function(){
+				$('#map2').css({"width":"165","height":"165","transition":"1s"});
+			});
+
+			$('#loc-inchis').click(function(){
+				$('#map2').css({"width":"40","height":"40","transition":"1s"});
+			});
+
+// button disabled if favourite address field is empty
+			$('#myaddress').keyup(function() {
+
+				var empty = false;
+				$('#myaddress').each(function() {
+					if ($(this).val().length == 0) {   
+						empty = true;
+					}
+				});
+
+				if (empty) {
+					$('button').attr('disabled', 'disabled');
+				} else {
+					$('button').removeAttr('disabled');
+				}
+			});
+
+// clear addrress field
+			$('.address-clear').click(function(){
+				$('#myselect').val(" ");
+			});
+
+			$('.ui-link.ng-binding').click(function(){
+				$('input[name=to]').val($(this).text());
+			});
+		});
+
+// timeout for the starting message
+		var alerted2 = localStorage.getItem('alerted2') || ''; 
+		if (alerted2 != 'yes') {
+			$('.tap-message').fadeIn('slow');
+				$('.tap-message').click(function(){
+			$(this).css({'display':'none'});
+			});
+		 localStorage.setItem('alerted2','yes');
+		}
+
+		var alerted3 = localStorage.getItem('alerted3') || '';
+		if (alerted3 != 'yes') {
+			$('.tap-message3').fadeIn('slow');
+				$('.tap-message3').click(function(){
+					$(this).css({'display':'none'});
+				});
+			localStorage.setItem('alerted3','yes');
+		}
+	</script>  
+</body>
+</html>
